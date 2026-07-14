@@ -14,28 +14,42 @@
 #include "BacktrackingSolver.hpp"
 #include "Sudoku.hpp"
 #include "SudokuLoader.hpp"
+#include <array>
+#include <chrono>
 #include <iostream>
 #include <memory>
+#include <ratio>
 #include <string>
 
 int main(int argc, char *argv[]) {
-  // Default file to load if no arguments are provided
-  std::string filename = "../data/20240415.csv";
+  std::vector<Sudoku> all_sudokus;
 
-  // Read filename from command line arguments
-  if (argc > 1) {
-    filename = argv[1];
+  if (argc <= 1) {
+    std::string filename = argv[1];
+    std::cout << "Loading Sudokus from " << filename << "...\n";
+    auto loaded_grids = loadSudokusFromFile(filename, 100000);
+    if (!loaded_grid) {
+      std::cerr << "Failed to load Sudoku.\n";
+      return 1;
+    }
+    board = Sudoku(*loaded_grid);
+  } else {
+    std::cout << "No file provided. Using default Sudoku grid from image...\n";
+    std::array<std::array<int, 9>, 9> default_grid = {
+        {{0, 0, 0, 0, 0, 0, 0, 0, 0},
+         {0, 0, 0, 0, 0, 3, 0, 8, 5},
+         {0, 0, 1, 0, 2, 0, 0, 0, 0},
+
+         {0, 0, 0, 5, 0, 7, 0, 0, 0},
+         {0, 0, 4, 0, 0, 0, 1, 0, 0},
+         {0, 9, 0, 0, 0, 0, 0, 0, 2},
+
+         {5, 0, 0, 0, 0, 0, 0, 7, 3},
+         {0, 0, 2, 0, 1, 0, 0, 0, 0},
+         {0, 0, 0, 0, 4, 0, 0, 0, 9}}};
+    board = Sudoku(default_grid);
   }
 
-  std::cout << "Loading Sudoku from " << filename << "...\n";
-  auto loaded_grid = loadSudokuFromFile(filename);
-  if (!loaded_grid) {
-    std::cerr << "Failed to load Sudoku.\n";
-    return 1;
-  }
-
-  // Initialize the Sudoku board with the loaded grid
-  Sudoku board(*loaded_grid);
   std::cout << "Initial board:\n";
   board.print();
 
@@ -44,6 +58,8 @@ int main(int argc, char *argv[]) {
   std::unique_ptr<SudokuSolver> solver = std::make_unique<BacktrackingSolver>();
 
   std::cout << "\nSolving...\n";
+
+  auto start = std::chrono::high_resolution_clock::now();
   // The solver mutates the board in place
   if (solver->solve(board)) {
     std::cout << "Sudoku solved successfully!\n";
@@ -58,6 +74,18 @@ int main(int argc, char *argv[]) {
   } else {
     std::cout << "Failed to solve Sudoku.\n";
   }
+  auto stop = std::chrono::high_resolution_clock::now();
+  auto duration =
+      std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
 
+  if (duration.count() < 1000)
+    std::cout << "Time taken to solve Sudoku: " << duration.count()
+              << " microseconds\n";
+  else if (duration.count() < 1000000)
+    std::cout << "Time taken to solve Sudoku: " << duration.count() / 1000.0
+              << " milliseconds\n";
+  else
+    std::cout << "Time taken to solve Sudoku: " << duration.count() / 1000000.0
+              << " seconds\n";
   return 0;
 }
